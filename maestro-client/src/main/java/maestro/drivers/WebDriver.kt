@@ -171,8 +171,19 @@ class WebDriver(val isStudio: Boolean) : Driver {
         ensureOpen()
 
         // retrieve view hierarchy from DOM
-        val contentDesc = executeJS("return window.maestro.getContentDescription()")
-            ?: throw IllegalStateException("Could not retrieve hierarchy through maestro.getContentDescription()")
+        // there are edge cases where executeJS returns null, and we cannot get the hierarchy. In this situation
+        // we retry multiple times until throwing an error eventually.
+        var contentDesc: Any? = null
+        var retry = 0
+        while (contentDesc == null) {
+            contentDesc = executeJS("return window.maestro.getContentDescription()")
+            if (contentDesc == null) {
+                retry++
+            }
+            if (retry == 10) {
+                throw IllegalStateException("Could not retrieve hierarchy through maestro.getContentDescription() (tried $retry times")
+            }
+        }
 
         // parse into TreeNodes
         fun parse(domRepresentation: Map<String, Any>): TreeNode {
